@@ -4,20 +4,37 @@ import multer from "multer";
 import path from "path";
 import { storage } from "./storage";
 import { podiumFormSchema } from "@shared/schema";
+import fs from 'fs';
+import express from 'express';
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
 
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: uploadsDir,
+    filename: (req, file, cb) => {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      cb(null, `${uniqueSuffix}-${file.originalname}`);
+    }
+  }),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
   },
 });
 
 export async function registerRoutes(app: Express) {
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(uploadsDir));
+
   app.post("/api/tournament", async (req, res) => {
     try {
       const validatedData = podiumFormSchema.parse(req.body);
       const tournament = await storage.createTournament(validatedData.tournament);
-      
+
       // Create players
       const players = await Promise.all(
         validatedData.players.map(player => storage.createPlayer(player))
@@ -34,10 +51,8 @@ export async function registerRoutes(app: Express) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // In a real app we'd upload to cloud storage
-    // For now return a fake URL
-    const fakeUrl = `/uploads/${Date.now()}-${req.file.originalname}`;
-    res.json({ url: fakeUrl });
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl });
   });
 
   return createServer(app);

@@ -120,7 +120,10 @@ export async function generatePodiumImage(data: PodiumForm): Promise<string> {
 
     // Load all images first
     const playerImages = await Promise.all(
-      data.players.map(player => loadImage(player.imageUrl))
+      data.players.map(player => {
+        console.log('Loading image:', player.imageUrl);
+        return loadImage(player.imageUrl);
+      })
     );
 
     for (let i = 0; i < 3; i++) {
