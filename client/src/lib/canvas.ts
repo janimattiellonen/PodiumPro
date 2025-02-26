@@ -1,24 +1,47 @@
 import type { PodiumForm } from "@shared/schema";
 
-function drawMedal(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
-  // Draw medal circle
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new HTMLImageElement();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function drawCircularImage(
+  ctx: CanvasRenderingContext2D, 
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  size: number
+) {
+  // Create circular clipping path
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(x, y, 20, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
+  ctx.arc(x, y, size/2, 0, Math.PI * 2);
+
+  // Add black border
   ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 10;
   ctx.stroke();
 
-  // Draw ribbon
-  ctx.beginPath();
-  ctx.moveTo(x, y + 20);
-  ctx.lineTo(x - 10, y + 40);
-  ctx.lineTo(x + 10, y + 40);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.stroke();
+  // Clip and draw image
+  ctx.clip();
+  const aspectRatio = img.width / img.height;
+  let drawWidth = size;
+  let drawHeight = size;
+
+  if (aspectRatio > 1) {
+    drawWidth = size * aspectRatio;
+  } else {
+    drawHeight = size / aspectRatio;
+  }
+
+  const drawX = x - drawWidth/2;
+  const drawY = y - drawHeight/2;
+  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
 }
 
 export async function generatePodiumImage(data: PodiumForm): Promise<string> {
@@ -45,22 +68,25 @@ export async function generatePodiumImage(data: PodiumForm): Promise<string> {
   ctx.fillText(data.tournament.date, canvas.width / 2, 120);
   ctx.fillText(data.tournament.websiteUrl, canvas.width / 2, 160);
 
-  // Medal colors
-  const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+  // Medal emojis matching the form
+  const medals = ["🥇", "🥈", "🥉"];
 
-  // Draw podium
+  // Draw podium positions
   const podiumPositions = [
     { x: 600, y: 500, height: 200, place: "1st" },
     { x: 400, y: 600, height: 100, place: "2nd" },
     { x: 800, y: 650, height: 50, place: "3rd" }
   ];
 
+  // Load all images first
+  const playerImages = await Promise.all(
+    data.players.map(player => loadImage(player.imageUrl))
+  );
+
   for (let i = 0; i < 3; i++) {
     const player = data.players[i];
     const pos = podiumPositions[i];
-
-    // Draw medal
-    drawMedal(ctx, pos.x, canvas.height - pos.height - 120, medalColors[i]);
+    const img = playerImages[i];
 
     // Draw podium block
     ctx.fillStyle = "#64748b";
@@ -70,6 +96,23 @@ export async function generatePodiumImage(data: PodiumForm): Promise<string> {
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 48px sans-serif";
     ctx.fillText(pos.place, pos.x, canvas.height - 20);
+
+    // Draw player image as circle with border
+    await drawCircularImage(
+      ctx,
+      img,
+      pos.x,
+      canvas.height - pos.height - 120,
+      100
+    );
+
+    // Draw medal emoji above image
+    ctx.font = "48px sans-serif";
+    ctx.fillText(
+      medals[i],
+      pos.x,
+      canvas.height - pos.height - 180
+    );
 
     // Draw player name
     ctx.fillStyle = "#0f172a";
