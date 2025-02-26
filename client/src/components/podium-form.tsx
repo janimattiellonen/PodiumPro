@@ -17,9 +17,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { generatePodiumImage } from "@/lib/canvas";
 import { useToast } from "@/hooks/use-toast";
 
-export function PodiumForm() {
+interface PodiumFormProps {
+  onImageGenerated: (imageUrl: string) => void;
+}
+
+export function PodiumForm({ onImageGenerated }: PodiumFormProps) {
   const { toast } = useToast();
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
   const form = useForm<PodiumForm>({
     resolver: zodResolver(podiumFormSchema),
@@ -41,7 +44,16 @@ export function PodiumForm() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("image", file);
-      const res = await apiRequest("POST", "/api/upload", formData);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upload image");
+      }
+
       return await res.json();
     },
   });
@@ -51,7 +63,7 @@ export function PodiumForm() {
       const res = await apiRequest("POST", "/api/tournament", data);
       const tournament = await res.json();
       const imageUrl = await generatePodiumImage(data);
-      setGeneratedImage(imageUrl);
+      onImageGenerated(imageUrl);
       return tournament;
     },
   });
@@ -96,7 +108,7 @@ export function PodiumForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Tournament Details</h2>
-          
+
           <FormField
             control={form.control}
             name="tournament.name"
@@ -142,7 +154,7 @@ export function PodiumForm() {
 
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Podium Placements</h2>
-          
+
           {[0, 1, 2].map((index) => (
             <div key={index} className="space-y-4 p-4 border rounded-lg">
               <h3 className="text-lg font-semibold">
@@ -173,7 +185,7 @@ export function PodiumForm() {
                       <Input
                         type="number"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
