@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { podiumFormSchema, type PodiumForm } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox} from "@/components/ui/checkbox.tsx";
+
 import {
   Form,
   FormControl,
@@ -34,7 +36,8 @@ export function PodiumForm({ onImageGenerated }: PodiumFormProps) {
       },
       players: Array(3).fill({
         name: "",
-        score: 0,
+        isTeamMember: undefined,
+        score: "",
         imageUrl: "",
       }),
     },
@@ -177,15 +180,34 @@ export function PodiumForm({ onImageGenerated }: PodiumFormProps) {
 
               <FormField
                 control={form.control}
+                name={`players.${index}.isTeamMember`}
+                render={({ field }) => {
+                  const {onChange, value, ...rest} = field
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Is team member</FormLabel>
+                      <FormControl>
+                        <Checkbox checked={value || undefined} onCheckedChange={onChange} {...rest}/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }
+              }
+              />
+
+              <FormField
+                control={form.control}
                 name={`players.${index}.score`}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Score</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
+                        type="text"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />

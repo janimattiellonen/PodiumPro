@@ -1,4 +1,4 @@
-import { pgTable, text, serial, date, integer } from "drizzle-orm/pg-core";
+import { pgTable, boolean, text, serial, date, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,7 +15,8 @@ export const tournaments = pgTable("tournaments", {
 export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  score: integer("score").notNull(),
+  isTeamMember: boolean("isTeamMember"),
+  score: text("score").notNull(),
   imageUrl: text("image_url").notNull(),
 });
 
@@ -26,8 +27,8 @@ export const insertTournamentSchema = createInsertSchema(tournaments).omit({
   thirdPlaceId: true,
 });
 
-export const insertPlayerSchema = createInsertSchema(players).omit({ 
-  id: true 
+export const insertPlayerSchema = createInsertSchema(players).omit({
+  id: true
 });
 
 export const podiumFormSchema = z.object({
